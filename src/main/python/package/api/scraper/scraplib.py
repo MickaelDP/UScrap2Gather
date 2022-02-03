@@ -29,7 +29,7 @@ def check_api_twitter_connexion(api):
     try:
         api.verify_credentials()
     except (TypeError, SystemExit, tweepy.TweepyException):
-        sys.exit(1)
+        return True
 
 
 # checks if the configuration respects the limitation
@@ -52,8 +52,9 @@ def scrap(keywords, api, profile, c, cur, db):
                     duplicate_test = cur.fetchone()
                     if duplicate_test[0] == 0:
                         scrap_record(profile, c, cur, tweet, tweetsafe, db)
-        except tweepy.TweepyException:
-            sys.exit(1)
+        except Exception as e:
+            return False, "Error while scraping"
+    return True
 
 
 def scrap_record(profile, c, cur, tweet, tweetsafe, db):
@@ -74,7 +75,7 @@ def scrap_record(profile, c, cur, tweet, tweetsafe, db):
                    retweet=str(tweet.retweet_count))
         log.save()
         c.rollback()
-    except tweepy.TweepyException as e:
+    except Exception as e:
         log = Logs(uuid=str(uuid4()),
                    error=str(e),
                    contributor=f"{profile.project}.{profile.name}",
@@ -85,19 +86,7 @@ def scrap_record(profile, c, cur, tweet, tweetsafe, db):
                    like=str(tweet.favorite_count),
                    retweet=str(tweet.retweet_count))
         log.save()
-        sys.exit(1)
-    except SystemExit as e:
-        log = Logs(uuid=str(uuid4()),
-                   error=str(e),
-                   contributor=f"{profile.project}.{profile.name}",
-                   database=db.database,
-                   name=str(tweet.user.name),
-                   content=tweetsafe,
-                   date=str(tweet.created_at),
-                   like=str(tweet.favorite_count),
-                   retweet=str(tweet.retweet_count))
-        log.save()
-        sys.exit(6)
+        return False
 
 
 # pre-record cleaning

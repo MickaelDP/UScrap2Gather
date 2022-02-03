@@ -48,15 +48,15 @@ def refresh_keyword(widget):
 
 # thread
 class Worker(QtCore.QObject):
-    finished = QtCore.Signal(bool)
+    finished = QtCore.Signal(bool, str)
 
     def __init__(self, nb):
         super().__init__()
-        self.worker_id = ACTIVE_LAUNCH[nb]
+        self.worker_id = nb
 
     def scrap(self):
         work = scraper(self.worker_id)
-        self.finished.emit(work)
+        self.finished.emit(work[0], work[1])
 
 
 # Class GUI
@@ -144,6 +144,26 @@ class MainWindows(QTabWidget):
         self.log_retweet_box = QLineEdit()
         self.btn_rec_log = QPushButton("Record")
 
+        # preset worker n thread
+        self.thread_1 = QtCore.QThread()
+        self.thread_2 = QtCore.QThread()
+        self.thread_3 = QtCore.QThread()
+        self.thread_4 = QtCore.QThread()
+        self.thread_5 = QtCore.QThread()
+        self.thread_6 = QtCore.QThread()
+        self.thread_7 = QtCore.QThread()
+        self.thread_8 = QtCore.QThread()
+
+        self.worker_1 = Worker(1)
+        self.worker_2 = Worker(2)
+        self.worker_3 = Worker(3)
+        self.worker_4 = Worker(4)
+        self.worker_5 = Worker(5)
+        self.worker_6 = Worker(6)
+        self.worker_7 = Worker(7)
+        self.worker_8 = Worker(8)
+
+
         # info init
         self.layout_in = QGridLayout()
         self.title = QLabel()
@@ -192,7 +212,7 @@ class MainWindows(QTabWidget):
         self.more_s.clicked.connect(self.nw_p_set)
         self.less_s.clicked.connect(self.dl_p_set)
         self.scrap_btn_start.clicked.connect(self.scrap)
-        self.scrap_btn_stop.clicked.connect(partial(self.stop_scrap, True))
+        self.scrap_btn_stop.clicked.connect(partial(self.stop_scrap, True, "ok"))
 
         # database
         self.more_d.clicked.connect(self.nw_dt_set)
@@ -393,7 +413,7 @@ class MainWindows(QTabWidget):
         else:
             ACTIVE_LAUNCH.remove(nb)
 
-    # check api connection parameters and save file 1110
+    # check api connection parameters and save file
     def chk_n_save_scp(self, widget, name):
         save = 0
         # api connexion
@@ -490,19 +510,19 @@ class MainWindows(QTabWidget):
         if False in STOP_THREADS:
             STOP_THREADS.append(True)
             STOP_THREADS.remove(False)
-        self.scrap_btn_stop.setEnabled(True)
         self.scrap_btn_start.setEnabled(False)
+        self.scrap_btn_stop.setEnabled(True)
         for n in range(len(ACTIVE_LAUNCH)):
-            self.thread = QtCore.QThread(self)
-            self.worker = Worker(n)
-            self.worker.moveToThread(self.thread)
-            self.thread.started.connect(self.worker.scrap)
-            self.worker.finished.connect(self.thread.quit)
-            self.worker.finished.connect(self.stop_scrap)
-            self.thread.start()
+            thread = eval(f"self.thread_{ACTIVE_LAUNCH[n]}")
+            worker = eval(f"self.worker_{ACTIVE_LAUNCH[n]}")
+            worker.moveToThread(thread)
+            thread.started.connect(worker.scrap)
+            worker.finished.connect(thread.quit)
+            worker.finished.connect(self.stop_scrap)
+            thread.start()
 
     # stop scrap
-    def stop_scrap(self, success):
+    def stop_scrap(self, success, msg):
         if True in STOP_THREADS:
             STOP_THREADS.append(False)
             STOP_THREADS.remove(True)
@@ -510,7 +530,10 @@ class MainWindows(QTabWidget):
         self.scrap_btn_stop.setEnabled(False)
         if not success:
             self.error_box.setWindowTitle("Scrap failed")
-            self.error_box.showMessage("Scraper encountered an error and had to end the process")
+            self.error_box.showMessage(f"""
+                                        An error has occurred:\n
+                                        {msg}
+                                        """)
 
     # -------------------------------------------------------------------------------------------------------------------
     #                                              database

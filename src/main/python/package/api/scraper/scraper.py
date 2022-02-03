@@ -13,6 +13,7 @@ from package.api.constants import STOP_THREADS
 
 
 def scraper(nb):
+
     # variable initialization
     profile_info = get_s_profile()[f"P{nb}"]
     database_info = get_dataps()[f"D{int(profile_info.database[0])}"]
@@ -24,7 +25,8 @@ def scraper(nb):
     auth = tweepy.OAuthHandler(profile_info.key_api, profile_info.secret_api)
     auth.set_access_token(profile_info.token_api, profile_info.token_secret_api)
     api = tweepy.API(auth, wait_on_rate_limit=True)
-    check_api_twitter_connexion(api)
+    if check_api_twitter_connexion(api):
+        return False, "Twitter API error"
 
     # Psql connexion
     c = connect_bdd(database_info.host, database_info.database, database_info.login, database_info.secret)
@@ -37,22 +39,22 @@ def scraper(nb):
     # main loop
     print(f"thread {nb}: start")
     if not check_rate(len(keywords_info), t_interval, int(profile_info.rate)):
-        sys.exit(5)
+        return False, "Frequency settings are wrong"
     else:
         while STOP_THREADS[0]:
             if round(time.time()) % t_interval == modulo_start:
-                try:
-                    scrap(keywords_info, api, profile_info, c, cur, database_info)
+                result = scrap(keywords_info, api, profile_info, c, cur, database_info)
+                if result:
                     print(f"thread {nb}: new data")
-                except KeyboardInterrupt:
-                    return False
-                except (tweepy.TweepyException, psycopg2.DatabaseError, psycopg2.OperationalError,  NameError):
-                    return False
+                else:
+                    STOP_THREADS.append(False)
+                    STOP_THREADS.remove(True)
+                    return result
             else:
                 try:
                     time.sleep(1)
-                except KeyboardInterrupt:
-                    return False
+                except Exception as e:
+                    return False, e
     # clean cursor
     try:
         c.close()
@@ -60,7 +62,7 @@ def scraper(nb):
         pass
 
     print(f"thread {nb}: stop")
-    return True
+    return True, "ok"
 
 
 # select the right list of keywords
