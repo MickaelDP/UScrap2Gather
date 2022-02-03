@@ -45,14 +45,28 @@ def scrap(keywords, api, profile, c, cur, db):
                                            tweet_mode='extended'):
                 tweetsafe = clean_tweet(tweet)
                 if tweetsafe != "NoRt0":
-                    cur.execute(f"""
+                    try:
+                        cur.execute(f"""
                                     SELECT count(*) FROM messages
                                     WHERE content LIKE '{tweetsafe}%';
-                                """)
-                    duplicate_test = cur.fetchone()
+                                    """)
+                        duplicate_test = cur.fetchone()
+                    except Exception as e:
+                        log = Logs(uuid=str(uuid4()),
+                                   error=str(e),
+                                   contributor=f"{profile.project}.{profile.name}",
+                                   database=db.database,
+                                   name=str(tweet.user.name),
+                                   content=tweetsafe,
+                                   date=str(tweet.created_at),
+                                   like=str(tweet.favorite_count),
+                                   retweet=str(tweet.retweet_count))
+                        log.save()
+                        continue
                     if duplicate_test[0] == 0:
                         scrap_record(profile, c, cur, tweet, tweetsafe, db)
         except Exception as e:
+            print(e)
             return False, "Error while scraping"
     return True
 
@@ -76,16 +90,7 @@ def scrap_record(profile, c, cur, tweet, tweetsafe, db):
         log.save()
         c.rollback()
     except Exception as e:
-        log = Logs(uuid=str(uuid4()),
-                   error=str(e),
-                   contributor=f"{profile.project}.{profile.name}",
-                   database=db.database,
-                   name=str(tweet.user.name),
-                   content=tweetsafe,
-                   date=str(tweet.created_at),
-                   like=str(tweet.favorite_count),
-                   retweet=str(tweet.retweet_count))
-        log.save()
+        print(e)
         return False
 
 

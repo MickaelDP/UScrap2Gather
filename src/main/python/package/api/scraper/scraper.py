@@ -44,6 +44,7 @@ def scraper(nb):
         while STOP_THREADS[0]:
             if round(time.time()) % t_interval == modulo_start:
                 result = scrap(keywords_info, api, profile_info, c, cur, database_info)
+                print(result)
                 if result:
                     print(f"thread {nb}: new data")
                 else:

@@ -36,8 +36,13 @@ def refresh_database(widget):
         for e in combo_db:
             widget.addItem(f"{e[1]} {combo_db[e].database}")
 
+# refresh list of log
+def refresh_log(widget, mainwidget):
+    widget.clear()
+    mainwidget.populate_log()
 
-# list of keyword
+
+# refresh list of keyword
 def refresh_keyword(widget):
     combo_kw = get_keywords()
     for i in range(int(CONFIG.get("NbrProfil", 1))):
@@ -528,6 +533,7 @@ class MainWindows(QTabWidget):
             STOP_THREADS.remove(True)
         self.scrap_btn_start.setEnabled(True)
         self.scrap_btn_stop.setEnabled(False)
+        refresh_log(self.lw_view, self)
         if not success:
             self.error_box.setWindowTitle("Scrap failed")
             self.error_box.showMessage(f"""
